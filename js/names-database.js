@@ -16,7 +16,9 @@ let dataLoadedPromise = null;
  * @returns {Array} Array of parsed row objects
  */
 function parseCSV(csvText) {
-    const lines = csvText.trim().split('\n');
+    // Normalize line endings (handle Windows \r\n and Mac \r)
+    const normalizedText = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const lines = normalizedText.trim().split('\n');
     if (lines.length < 2) {
         return []; // Empty or header-only file
     }
