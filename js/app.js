@@ -401,24 +401,11 @@ const App = {
     },
 
     /**
-     * Format origin string for display
+     * Format origin string for display (just return as-is from CSV)
      */
     formatOrigin(origin) {
-        const originMap = {
-            english: 'English', german: 'German', spanish: 'Spanish',
-            french: 'French', italian: 'Italian', chinese: 'Chinese',
-            arabic: 'Arabic', indian: 'Indian', japanese: 'Japanese',
-            korean: 'Korean', african: 'African', scandinavian: 'Scandinavian',
-            slavic: 'Slavic', greek: 'Greek', hebrew: 'Hebrew',
-            portuguese: 'Portuguese', turkish: 'Turkish', dutch: 'Dutch',
-            polish: 'Polish', vietnamese: 'Vietnamese', thai: 'Thai',
-            filipino: 'Filipino', indonesian: 'Indonesian', persian: 'Persian',
-            hungarian: 'Hungarian', romanian: 'Romanian', czech: 'Czech',
-            serbian: 'Serbian', ukrainian: 'Ukrainian', irish: 'Irish',
-            scottish: 'Scottish', welsh: 'Welsh', nordic: 'Nordic',
-            modern: 'Modern', russian: 'Russian'
-        };
-        return originMap[origin] || origin.charAt(0).toUpperCase() + origin.slice(1);
+        if (!origin) return 'Unknown';
+        return origin;
     },
 
     /**
