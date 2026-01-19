@@ -6,8 +6,13 @@
 const App = {
     // State
     currentMode: 'database',
+    currentGender: 'all',
+    currentOrigin: 'all',
     debounceTimer: null,
     lastQuery: '',
+    allResults: [],
+    displayedCount: 0,
+    resultsPerPage: 10,
 
     // DOM Elements
     elements: {},
@@ -28,11 +33,15 @@ const App = {
         this.elements = {
             lastNameInput: document.getElementById('lastName'),
             modeButtons: document.querySelectorAll('.mode-btn'),
+            genderButtons: document.querySelectorAll('.gender-btn'),
+            originFilter: document.getElementById('originFilter'),
             resultsSection: document.getElementById('resultsSection'),
             resultsPlaceholder: document.getElementById('resultsPlaceholder'),
             resultsLoading: document.getElementById('resultsLoading'),
             resultsList: document.getElementById('resultsList'),
-            resultsCount: document.getElementById('resultsCount')
+            resultsCount: document.getElementById('resultsCount'),
+            loadMoreWrapper: document.getElementById('loadMoreWrapper'),
+            loadMoreBtn: document.getElementById('loadMoreBtn')
         };
     },
 
@@ -51,6 +60,23 @@ const App = {
                 const mode = btn.dataset.mode;
                 this.setMode(mode);
             });
+        });
+
+        // Gender filter
+        this.elements.genderButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.setGender(btn.dataset.gender);
+            });
+        });
+
+        // Origin filter
+        this.elements.originFilter.addEventListener('change', (e) => {
+            this.setOrigin(e.target.value);
+        });
+
+        // Load more button
+        this.elements.loadMoreBtn.addEventListener('click', () => {
+            this.loadMore();
         });
 
         // Focus input on page load
@@ -104,10 +130,42 @@ const App = {
     },
 
     /**
+     * Set the gender filter
+     */
+    setGender(gender) {
+        this.currentGender = gender;
+
+        // Update button states
+        this.elements.genderButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.gender === gender);
+        });
+
+        // Re-run search if there's input
+        const value = this.elements.lastNameInput.value.trim();
+        if (value) {
+            this.search(value);
+        }
+    },
+
+    /**
+     * Set the origin filter
+     */
+    setOrigin(origin) {
+        this.currentOrigin = origin;
+
+        // Re-run search if there's input
+        const value = this.elements.lastNameInput.value.trim();
+        if (value) {
+            this.search(value);
+        }
+    },
+
+    /**
      * Perform the search/generation
      */
     search(lastName) {
         this.showLoading();
+        this.displayedCount = 0;
 
         // Use setTimeout to allow UI to update
         setTimeout(() => {
@@ -119,8 +177,82 @@ const App = {
                 results = this.generateNovelNames(lastName);
             }
 
-            this.displayResults(results, lastName);
+            // Apply filters
+            results = this.applyFilters(results);
+
+            this.allResults = results;
+            this.displayResults(results.slice(0, this.resultsPerPage), lastName, results.length);
+            this.displayedCount = Math.min(this.resultsPerPage, results.length);
+
+            // Show/hide load more button
+            this.updateLoadMoreButton();
         }, 100);
+    },
+
+    /**
+     * Apply gender and origin filters
+     */
+    applyFilters(results) {
+        return results.filter(result => {
+            // Gender filter
+            if (this.currentGender !== 'all') {
+                if (result.gender !== this.currentGender) {
+                    return false;
+                }
+            }
+
+            // Origin filter
+            if (this.currentOrigin !== 'all') {
+                const resultOrigin = result.origin.toLowerCase();
+                if (resultOrigin !== this.currentOrigin &&
+                    !resultOrigin.startsWith(this.currentOrigin)) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+    },
+
+    /**
+     * Load more results
+     */
+    loadMore() {
+        const lastName = this.elements.lastNameInput.value.trim();
+        const nextBatch = this.allResults.slice(
+            this.displayedCount,
+            this.displayedCount + this.resultsPerPage
+        );
+
+        if (nextBatch.length > 0) {
+            this.appendResults(nextBatch, lastName);
+            this.displayedCount += nextBatch.length;
+            this.updateLoadMoreButton();
+            this.updateResultsCount();
+        }
+    },
+
+    /**
+     * Update the load more button visibility
+     */
+    updateLoadMoreButton() {
+        const hasMore = this.displayedCount < this.allResults.length;
+        this.elements.loadMoreWrapper.classList.toggle('hidden', !hasMore);
+
+        if (hasMore) {
+            const remaining = this.allResults.length - this.displayedCount;
+            const nextCount = Math.min(remaining, this.resultsPerPage);
+            this.elements.loadMoreBtn.querySelector('span').textContent =
+                `Show ${nextCount} more`;
+        }
+    },
+
+    /**
+     * Update results count display
+     */
+    updateResultsCount() {
+        this.elements.resultsCount.textContent =
+            `Showing ${this.displayedCount} of ${this.allResults.length}`;
     },
 
     /**
@@ -130,23 +262,24 @@ const App = {
         const results = [];
 
         // Score all names in the database
-        for (const { name, origin } of ALL_NAMES) {
+        for (const { name, origin, gender } of ALL_NAMES) {
             const harmony = PhoneticEngine.calculateHarmonyScore(name, lastName);
 
             results.push({
                 name,
                 origin: this.formatOrigin(origin),
+                gender: gender,
                 score: harmony.score,
                 reasons: harmony.reasons,
                 isNovel: false
             });
         }
 
-        // Sort by score and return top 10
+        // Sort by score
         results.sort((a, b) => b.score - a.score);
 
-        // Add some variety - don't just return similar names
-        return this.diversifyResults(results, 10);
+        // Return with diversity
+        return this.diversifyResults(results, 100);
     },
 
     /**
@@ -154,8 +287,8 @@ const App = {
      */
     diversifyResults(results, count) {
         const selected = [];
-        const usedInitials = new Set();
-        const usedEndings = new Set();
+        const usedInitials = new Map();
+        const usedEndings = new Map();
 
         for (const result of results) {
             if (selected.length >= count) break;
@@ -163,14 +296,14 @@ const App = {
             const initial = result.name[0].toLowerCase();
             const ending = result.name.slice(-2).toLowerCase();
 
-            // Allow some overlap but prefer variety
-            const initialOverlap = usedInitials.has(initial);
-            const endingOverlap = usedEndings.has(ending);
+            const initialCount = usedInitials.get(initial) || 0;
+            const endingCount = usedEndings.get(ending) || 0;
 
-            if (!initialOverlap || !endingOverlap || selected.length < count / 2) {
+            // Allow some overlap but prefer variety
+            if (initialCount < 5 && endingCount < 3) {
                 selected.push(result);
-                usedInitials.add(initial);
-                usedEndings.add(ending);
+                usedInitials.set(initial, initialCount + 1);
+                usedEndings.set(ending, endingCount + 1);
             }
         }
 
@@ -191,14 +324,29 @@ const App = {
      * Generate novel names
      */
     generateNovelNames(lastName) {
-        const generated = NameGenerator.generateForLastName(lastName, 15);
+        const generated = NameGenerator.generateForLastName(lastName, 50);
 
-        // Add "generated" origin indicator
-        return generated.slice(0, 10).map(item => ({
+        return generated.map(item => ({
             ...item,
             origin: 'Novel Creation',
+            gender: this.guessGeneratedGender(item.name),
             isNovel: true
         }));
+    },
+
+    /**
+     * Guess gender for generated names based on endings
+     */
+    guessGeneratedGender(name) {
+        const lower = name.toLowerCase();
+        const femaleEndings = ['a', 'ia', 'ie', 'ina', 'ella', 'ette', 'lyn'];
+
+        for (const ending of femaleEndings) {
+            if (lower.endsWith(ending)) {
+                return 'female';
+            }
+        }
+        return 'male';
     },
 
     /**
@@ -206,63 +354,58 @@ const App = {
      */
     formatOrigin(origin) {
         const originMap = {
-            english: 'English',
-            german: 'German',
-            spanish: 'Spanish',
-            french: 'French',
-            italian: 'Italian',
-            chinese: 'Chinese',
-            arabic: 'Arabic',
-            indian: 'Indian',
-            japanese: 'Japanese',
-            korean: 'Korean',
-            african: 'African',
-            scandinavian: 'Scandinavian',
-            slavic: 'Slavic',
-            greek: 'Greek',
-            hebrew: 'Hebrew',
-            portuguese: 'Portuguese',
-            turkish: 'Turkish',
-            dutch: 'Dutch',
-            polish: 'Polish',
-            vietnamese: 'Vietnamese',
-            thai: 'Thai',
-            filipino: 'Filipino',
-            indonesian: 'Indonesian',
-            persian: 'Persian',
-            hungarian: 'Hungarian',
-            romanian: 'Romanian',
-            czech: 'Czech',
-            serbian: 'Serbian',
-            ukrainian: 'Ukrainian',
-            irish: 'Irish',
-            scottish: 'Scottish',
-            welsh: 'Welsh',
-            nordic: 'Nordic',
-            modern: 'Modern'
+            english: 'English', german: 'German', spanish: 'Spanish',
+            french: 'French', italian: 'Italian', chinese: 'Chinese',
+            arabic: 'Arabic', indian: 'Indian', japanese: 'Japanese',
+            korean: 'Korean', african: 'African', scandinavian: 'Scandinavian',
+            slavic: 'Slavic', greek: 'Greek', hebrew: 'Hebrew',
+            portuguese: 'Portuguese', turkish: 'Turkish', dutch: 'Dutch',
+            polish: 'Polish', vietnamese: 'Vietnamese', thai: 'Thai',
+            filipino: 'Filipino', indonesian: 'Indonesian', persian: 'Persian',
+            hungarian: 'Hungarian', romanian: 'Romanian', czech: 'Czech',
+            serbian: 'Serbian', ukrainian: 'Ukrainian', irish: 'Irish',
+            scottish: 'Scottish', welsh: 'Welsh', nordic: 'Nordic',
+            modern: 'Modern', russian: 'Russian'
         };
-
-        return originMap[origin] || origin;
+        return originMap[origin] || origin.charAt(0).toUpperCase() + origin.slice(1);
     },
 
     /**
      * Display results in the UI
      */
-    displayResults(results, lastName) {
+    displayResults(results, lastName, totalCount) {
         this.elements.resultsPlaceholder.classList.add('hidden');
         this.elements.resultsLoading.classList.add('hidden');
         this.elements.resultsList.classList.remove('hidden');
 
         // Update count
-        this.elements.resultsCount.textContent = `${results.length} suggestions`;
+        this.elements.resultsCount.textContent =
+            `Showing ${results.length} of ${totalCount}`;
 
         // Build result items HTML
-        const html = results.map((result, index) => {
+        this.elements.resultsList.innerHTML = this.buildResultsHTML(results, lastName, 0);
+    },
+
+    /**
+     * Append more results to the list
+     */
+    appendResults(results, lastName) {
+        const startIndex = this.displayedCount;
+        const html = this.buildResultsHTML(results, lastName, startIndex);
+        this.elements.resultsList.insertAdjacentHTML('beforeend', html);
+    },
+
+    /**
+     * Build HTML for results
+     */
+    buildResultsHTML(results, lastName, startIndex) {
+        return results.map((result, index) => {
             const level = PhoneticEngine.getScoreLevel(result.score);
             const label = PhoneticEngine.getScoreLabel(result.score);
+            const animDelay = (startIndex + index) * 30;
 
             return `
-                <li class="result-item" style="animation-delay: ${index * 30}ms">
+                <li class="result-item" style="animation-delay: ${animDelay}ms">
                     <div class="result-header">
                         <div class="result-name">
                             <span class="result-full-name">
@@ -271,29 +414,23 @@ const App = {
                             </span>
                             <span class="result-origin">
                                 ${this.escapeHtml(result.origin)}
+                                <span class="gender-badge ${result.gender}">${result.gender}</span>
                                 ${result.isNovel ? '<span class="novel-badge">AI Generated</span>' : ''}
                             </span>
                         </div>
                         <div class="result-score">
-                            <div class="score-bar">
-                                ${this.renderScoreBar(level)}
-                            </div>
+                            <div class="score-bar">${this.renderScoreBar(level)}</div>
                             <span class="score-label">${label}</span>
                         </div>
                     </div>
                     <div class="result-reasons">
                         ${result.reasons.map(reason => `
-                            <span class="reason-tag">
-                                ${this.getReasonIcon(reason)}
-                                ${this.escapeHtml(reason)}
-                            </span>
+                            <span class="reason-tag">${this.escapeHtml(reason)}</span>
                         `).join('')}
                     </div>
                 </li>
             `;
         }).join('');
-
-        this.elements.resultsList.innerHTML = html;
     },
 
     /**
@@ -310,36 +447,13 @@ const App = {
     },
 
     /**
-     * Get icon for reason tag
-     */
-    getReasonIcon(reason) {
-        const icons = {
-            'complementary rhythm': '<svg class="reason-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
-            'balanced rhythm': '<svg class="reason-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M3 12h18"/></svg>',
-            'optimal length': '<svg class="reason-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16M4 6h16M4 18h10"/></svg>',
-            'strong start': '<svg class="reason-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
-            'phoneme diversity': '<svg class="reason-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
-            'balanced sounds': '<svg class="reason-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="6"/></svg>',
-            'phoneme cohesion': '<svg class="reason-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
-            'smooth transition': '<svg class="reason-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>',
-            'flowing connection': '<svg class="reason-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12s2.545-5 7-5c4.454 0 7 5 7 5s-2.546 5-7 5c-4.455 0-7-5-7-5z"/><circle cx="12" cy="12" r="3"/></svg>',
-            'consonant variety': '<svg class="reason-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>',
-            'subtle alliteration': '<svg class="reason-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>',
-            'vowel harmony': '<svg class="reason-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>',
-            'tonal contrast': '<svg class="reason-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2v20"/></svg>',
-            'tonal harmony': '<svg class="reason-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>'
-        };
-
-        return icons[reason] || '<svg class="reason-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>';
-    },
-
-    /**
      * Show placeholder state
      */
     showPlaceholder() {
         this.elements.resultsPlaceholder.classList.remove('hidden');
         this.elements.resultsLoading.classList.add('hidden');
         this.elements.resultsList.classList.add('hidden');
+        this.elements.loadMoreWrapper.classList.add('hidden');
         this.elements.resultsCount.textContent = '';
     },
 
@@ -350,6 +464,7 @@ const App = {
         this.elements.resultsPlaceholder.classList.add('hidden');
         this.elements.resultsLoading.classList.remove('hidden');
         this.elements.resultsList.classList.add('hidden');
+        this.elements.loadMoreWrapper.classList.add('hidden');
         this.elements.resultsCount.textContent = '';
     },
 

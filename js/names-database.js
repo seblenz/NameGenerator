@@ -666,15 +666,225 @@ const NAMES_DATABASE = {
     ]
 };
 
-// Flatten all names into a single array with origin info
+// Gender classification system
+const GENDER_DATA = {
+    // Explicitly female names (common across cultures)
+    femaleNames: new Set([
+        // English female names
+        "Mary", "Patricia", "Jennifer", "Linda", "Barbara", "Elizabeth", "Susan", "Jessica", "Sarah", "Karen",
+        "Lisa", "Nancy", "Betty", "Margaret", "Sandra", "Ashley", "Kimberly", "Emily", "Donna", "Michelle",
+        "Dorothy", "Carol", "Amanda", "Melissa", "Deborah", "Stephanie", "Rebecca", "Sharon", "Laura", "Cynthia",
+        "Kathleen", "Amy", "Angela", "Shirley", "Anna", "Brenda", "Pamela", "Emma", "Nicole", "Helen",
+        "Samantha", "Katherine", "Christine", "Debra", "Rachel", "Carolyn", "Janet", "Catherine", "Maria", "Heather",
+        "Diane", "Ruth", "Julie", "Olivia", "Joyce", "Virginia", "Victoria", "Kelly", "Lauren", "Christina",
+        "Joan", "Evelyn", "Judith", "Megan", "Andrea", "Cheryl", "Hannah", "Jacqueline", "Martha", "Gloria",
+        "Teresa", "Ann", "Sara", "Madison", "Frances", "Kathryn", "Janice", "Jean", "Abigail", "Alice",
+        "Judy", "Sophia", "Grace", "Denise", "Amber", "Doris", "Marilyn", "Danielle", "Beverly", "Isabella",
+        "Theresa", "Diana", "Natalie", "Brittany", "Charlotte", "Marie", "Kayla", "Alexis", "Lori",
+        "Ava", "Mia", "Chloe", "Lily", "Zoey", "Layla", "Ella", "Addison", "Brooklyn", "Savannah",
+        "Leah", "Audrey", "Aaliyah", "Allison", "Arianna", "Aubrey", "Bella", "Brianna", "Claire", "Elena",
+        "Ellie", "Eva", "Faith", "Gabriella", "Genesis", "Gianna", "Hailey", "Hazel", "Jocelyn", "Julia",
+        "Kaylee", "Kennedy", "Kylie", "Lillian", "Lucy", "Mackenzie", "Madelyn", "Maya", "Melanie", "Molly",
+        "Naomi", "Nevaeh", "Paisley", "Payton", "Penelope", "Peyton", "Piper", "Reagan", "Ruby", "Sadie",
+        "Serenity", "Skylar", "Sydney", "Trinity", "Valentina", "Violet", "Zoe", "Luna", "Nova", "Aurora",
+        "Aria", "Stella", "Celeste", "Skye", "Jade", "Ivy", "Scarlett", "Sienna", "Willow", "Harper",
+        "Zara", "Mila", "Nola", "Nyla", "Kira", "Lila", "Nora", "Cora", "Thea", "Vera", "Elara", "Lyra",
+        "Ada", "Pearl", "Olive",
+        // German female names
+        "Ursula", "Helga", "Ingrid", "Renate", "Monika", "Karin", "Brigitte", "Erika", "Gisela", "Christa",
+        "Hannelore", "Elfriede", "Gerda", "Irmgard", "Hildegard", "Edith", "Lieselotte", "Gertrud", "Ilse", "Marianne",
+        "Sabine", "Petra", "Susanne", "Birgit", "Claudia", "Martina", "Heike", "Gabriele", "Angelika", "Anja",
+        "Katrin", "Stefanie", "Melanie", "Nadine", "Tanja", "Manuela", "Silke", "Lena", "Katharina", "Lea",
+        "Sophie", "Mia", "Emilia", "Lina", "Amelie", "Luisa", "Johanna", "Clara", "Frieda",
+        // Spanish female names
+        "María", "Carmen", "Rosa", "Cristina", "Marta", "Patricia", "Lucía", "Paula", "Claudia", "Silvia",
+        "Beatriz", "Raquel", "Irene", "Alba", "Sofía", "Camila", "Mariana", "Daniela", "Fernanda", "Carolina",
+        "Alejandra", "Adriana", "Paola", "Mónica", "Verónica", "Alicia", "Lorena", "Pilar", "Dolores", "Francisca",
+        "Mercedes", "Amparo", "Josefa", "Antonia", "Consuelo", "Esperanza", "Guadalupe", "Catalina", "Jimena",
+        "Renata", "Ximena", "Regina", "Valeria", "Mía",
+        // French female names
+        "Jeanne", "Françoise", "Monique", "Nathalie", "Isabelle", "Sylvie", "Nicole", "Jacqueline", "Madeleine",
+        "Denise", "Marguerite", "Suzanne", "Yvonne", "Simone", "Hélène", "Geneviève", "Valérie", "Sandrine",
+        "Céline", "Véronique", "Laurence", "Aurélie", "Émilie", "Camille", "Léa", "Manon", "Chloé", "Inès",
+        "Louise", "Juliette", "Rose", "Margot", "Victoire", "Adèle", "Agathe",
+        // Italian female names
+        "Giuseppina", "Giovanna", "Teresa", "Lucia", "Carmela", "Francesca", "Rita", "Margherita", "Paola",
+        "Antonella", "Patrizia", "Cristina", "Barbara", "Chiara", "Valentina", "Alessandra", "Federica", "Elisa",
+        "Simona", "Roberta", "Giulia", "Martina", "Giorgia", "Alice", "Greta", "Viola", "Arianna", "Eleonora",
+        "Ginevra", "Matilde", "Bianca", "Vittoria", "Noemi", "Adele", "Adriana", "Agnese", "Alberta", "Alessia",
+        "Alfonsina", "Amalia", "Andreina", "Angelica", "Anita", "Annalisa", "Annamaria", "Annunziata", "Antonia",
+        "Antonina", "Assunta", "Augusta", "Beatrice", "Benedetta", "Bruna", "Brunella", "Carlotta", "Caterina",
+        "Cecilia", "Clelia", "Clementina", "Concetta", "Cornelia", "Costanza", "Dalia", "Dina", "Domenica",
+        // Arabic female names
+        "Fatima", "Aisha", "Maryam", "Khadija", "Zainab", "Layla", "Nour", "Hana", "Yasmin", "Amira",
+        "Dalia", "Farida", "Jamila", "Karima", "Latifa", "Malika", "Nabila", "Rania", "Salma", "Samira",
+        "Sana", "Zahra", "Alia", "Basma", "Dina", "Farah", "Ghada", "Hala", "Iman", "Jana",
+        "Lamia", "Maha", "Nada", "Rana", "Reem", "Rim", "Sahar", "Yara", "Zeina",
+        // Indian female names
+        "Priya", "Anjali", "Sunita", "Pooja", "Neha", "Rekha", "Anita", "Kavita", "Meena", "Geeta",
+        "Deepa", "Shweta", "Nisha", "Ritu", "Seema", "Rani", "Sarita", "Padma", "Usha", "Lata",
+        "Shreya", "Aishwarya", "Divya", "Pallavi", "Preeti", "Rashmi", "Swati", "Tanvi", "Aditi", "Kriti",
+        "Aadhya", "Saanvi", "Aanya", "Aaradhya", "Ananya", "Pari", "Myra", "Ira", "Navya", "Diya",
+        "Kiara", "Avni", "Riya", "Mira", "Ishita", "Anvi", "Shanaya", "Amaira", "Pihu",
+        // Japanese female names
+        "Keiko", "Yoko", "Michiko", "Sachiko", "Noriko", "Kumiko", "Tomoko", "Akiko", "Mariko", "Reiko",
+        "Yuki", "Miki", "Emi", "Yumi", "Megumi", "Mayumi", "Aya", "Nana", "Rina", "Sakura",
+        "Hana", "Aoi", "Mei", "Yui", "Mio", "Riko", "Saki", "Kana", "Haruka", "Misaki",
+        "Honoka", "Kokoro", "Koharu", "Himari", "Akari", "Yuna", "Miyu", "Hinata", "Rin",
+        // Korean female names
+        "Jiyoung", "Soyeon", "Minji", "Yuna", "Jihye", "Eunji", "Hyejin", "Sunhee", "Minah", "Yuri",
+        "Soyoung", "Haeun", "Seoah", "Seoyeon", "Jiwoo", "Chaeyoung", "Yerin", "Sua", "Hayoung", "Dahyun",
+        "Eunbi", "Yejin", "Soojin", "Jisoo", "Hyebin", "Nayeon", "Yeji", "Somin", "Jiyeon", "Suhyun",
+        // Russian female names
+        "Olga", "Natasha", "Tatiana", "Irina", "Elena", "Svetlana", "Marina", "Anastasia", "Ekaterina",
+        "Vera", "Nadia", "Yulia", "Oksana", "Larisa", "Galina", "Lyudmila", "Nina", "Daria", "Aleksandra",
+        "Alina", "Alla", "Antonina", "Elizaveta", "Evgenia", "Kira", "Ksenia", "Lidiya", "Liliya", "Lyubov",
+        "Margarita", "Nadezhda", "Polina", "Raisa", "Sofiya", "Tamara", "Valentina", "Valeria", "Veronika",
+        "Viktoria", "Yaroslava", "Yekaterina", "Yelena", "Zinaida", "Zoya", "Darya", "Karina", "Kristina",
+        // Scandinavian female names
+        "Agnetha", "Alfhild", "Alma", "Alvhild", "Anette", "Annika", "Asta", "Astrid", "Berit", "Birgit",
+        "Bodil", "Brit", "Dagny", "Edda", "Edit", "Eldrid", "Eli", "Elina", "Else", "Embla",
+        "Ester", "Frida", "Gerda", "Grete", "Grethe", "Gudrun", "Gunhild", "Hanne", "Hedda", "Helle",
+        "Hilda", "Hulda", "Ida", "Inga", "Ingeborg", "Inger", "Irene", "Johanna", "Kari", "Kirsten",
+        "Kristina", "Liv", "Lise", "Maren",
+        // Greek female names
+        "Afroditi", "Agapi", "Alexandra", "Aliki", "Angela", "Antigoni", "Ariadni", "Athina", "Chrysoula",
+        "Danai", "Despina", "Dimitra", "Dorothea", "Efrosini", "Eirini", "Eleni", "Elisavet", "Elpida",
+        "Evangelia", "Evdokia", "Fani", "Fotini", "Georgia", "Gianna", "Ioanna", "Irini", "Kalliopi",
+        "Katerina", "Konstantina", "Kyriaki", "Lambrini", "Melina", "Niki", "Olympia", "Ourania", "Panagiota",
+        "Paraskevi", "Artemis", "Daphne", "Helena", "Irene", "Lydia", "Penelope", "Thalia", "Phoebe",
+        "Cleo", "Dora", "Elektra", "Calista", "Cassandra",
+        // Hebrew female names
+        "Abigail", "Batsheva", "Carmela", "Dalya", "Daphna", "Dikla", "Efrat", "Einat", "Galia", "Galit",
+        "Hadas", "Hagit", "Inbal", "Keren", "Liat", "Limor", "Meirav", "Michal", "Mirit", "Naama",
+        "Nava", "Neta", "Nili", "Nirit", "Noa", "Nurit", "Orit", "Orly", "Osnat", "Ravit",
+        "Rinat", "Roni", "Ronit", "Sarit", "Shelly", "Shimrit", "Shlomit", "Sigal", "Sigalit", "Sivan",
+        "Talia", "Tamar", "Tehila", "Ayelet",
+        // African female names
+        "Adjoa", "Akua", "Ama", "Nneka", "Chinyere", "Adaeze", "Ngozi", "Ifeoma", "Chiamaka", "Lindiwe",
+        "Nomvula", "Thandiwe", "Zandile", "Busisiwe", "Amara", "Imani", "Zuri", "Nia", "Kaya", "Sade",
+        "Folake", "Adanna", "Chioma", "Nkechi", "Oluchi", "Adaora", "Ebele", "Nkem", "Njeri", "Wanjiku",
+        "Akinyi", "Atieno", "Adhiambo", "Fatou", "Aminata", "Mariama", "Aissatou", "Kadiatou", "Oumou",
+        "Rufaro", "Rudo", "Nyasha", "Tariro", "Chenai", "Abena", "Adaugo", "Adwoa", "Afia", "Akosua",
+        "Amaka", "Chisom", "Chizoba", "Ego", "Efua", "Ifunanya", "Kemi", "Obiageli", "Somadina", "Uju",
+        // Turkish female names
+        "Fatma", "Ayse", "Emine", "Hatice", "Zeynep", "Elif", "Merve", "Esra", "Seda", "Tugba",
+        "Irem", "Ece", "Defne", "Melis", "Cemre", "Duru", "Ela", "Asya", "Nehir", "Nil",
+        "Buse", "Cansu", "Damla", "Ebru", "Gizem", "Hazal", "Ilgin", "Ipek", "Yaren", "Zehra",
+        "Aysel", "Aysegul", "Ayten", "Belgin", "Berna", "Betul", "Bilge", "Birsen", "Burcu", "Canan",
+        // Portuguese female names
+        "Adriana", "Aline", "Andreia", "Barbara", "Bianca", "Bruna", "Carla", "Catarina", "Celia",
+        "Eduarda", "Eliana", "Fernanda", "Flavia", "Helena", "Ines", "Isabel", "Joana", "Juliana",
+        // Polish female names
+        "Agnieszka", "Katarzyna", "Malgorzata", "Ewa", "Krystyna", "Elzbieta", "Zofia", "Zuzanna",
+        "Aleksandra", "Wiktoria", "Oliwia", "Amelia", "Emilia", "Alicja", "Martyna", "Karolina",
+        "Klaudia", "Patrycja", "Paulina", "Weronika", "Kinga",
+        // Persian female names
+        "Parisa", "Nasrin", "Shirin", "Fatemeh", "Azadeh", "Negar", "Setareh", "Mina", "Niloofar",
+        "Roxana", "Sepideh", "Taraneh", "Yalda", "Ziba",
+        // Hungarian female names
+        "Ilona", "Katalin", "Erzsebet", "Zsuzsanna", "Judit", "Agnes", "Margit", "Eszter", "Reka",
+        "Lilla", "Boglarka", "Zsófia",
+        // Vietnamese female names
+        "Linh", "Huong", "Lan", "Mai", "Thao", "Trang", "Ngoc", "Phuong", "Hong", "Thu",
+        "Hoa", "Yen", "Van", "Chi", "Ha", "Hanh", "Diem", "Uyen", "Trinh", "My",
+        // Thai female names
+        "Siriwan", "Sumalee", "Pornpan", "Siriporn", "Natthaya", "Rattana", "Wanida", "Sunisa", "Kannika",
+        "Ratchanee", "Ploy", "Fern", "Mint", "Pim", "Nan", "May", "Bee", "Aom", "Bow", "Nong",
+        // Indonesian female names
+        "Sri", "Dewi", "Siti", "Ani", "Nur", "Fitri", "Rina", "Ratna", "Yuni", "Wati",
+        "Putri", "Ayu", "Dian", "Indah", "Sari", "Rini",
+        // Irish female names
+        "Aoife", "Ciara", "Siobhan", "Niamh", "Saoirse", "Aisling", "Roisin", "Caoimhe", "Mairead",
+        "Sinead", "Orla", "Fiona", "Emer", "Grainne", "Deirdre", "Aine", "Clodagh", "Eimear", "Eabha", "Aoibhin",
+        // Scottish female names
+        "Eilidh", "Isla", "Maisie", "Ailsa", "Morven", "Kirsty", "Aileen", "Shona", "Morag", "Mairi",
+        "Catriona", "Bonnie", "Elspeth", "Flora", "Arran",
+        // Welsh female names
+        "Gwen", "Eira", "Cerys", "Seren", "Ffion", "Carys", "Rhiannon", "Angharad", "Bethan",
+        "Mali", "Elin", "Lowri", "Catrin", "Non", "Alaw", "Anwen", "Bronwen", "Nerys"
+    ]),
+
+    // Explicitly unisex names
+    unisexNames: new Set([
+        "Alex", "Jordan", "Taylor", "Morgan", "Casey", "Riley", "Quinn", "Avery", "Peyton", "Cameron",
+        "Dakota", "Finley", "Hayden", "Jamie", "Jesse", "Kendall", "Leslie", "Logan", "Mackenzie", "Parker",
+        "Reese", "Robin", "Sage", "Sam", "Shannon", "Skyler", "Sydney", "Terry", "Tracy", "Devon",
+        "Emery", "Harley", "Harper", "Kai", "Kelly", "Kim", "Lee", "Madison", "Marley", "Micah",
+        "Payton", "Phoenix", "River", "Rowan", "Rory", "Shawn", "Stevie", "Storm", "Winter",
+        // Asian unisex names
+        "Yuki", "Aoi", "Hinata", "Sora", "Hikaru", "Ren", "Haru", "Makoto", "Akira", "Kaoru",
+        "Wei", "Lin", "Min", "Yu", "Jing", "Xin", "Ning", "Yan", "Chen", "Ling",
+        "Deniz", "Yuki", "Kim", "Hyun", "Ji", "Young", "Min"
+    ]),
+
+    // Female name endings (heuristic patterns)
+    femaleEndings: ['a', 'ia', 'ie', 'y', 'ine', 'ina', 'elle', 'ette', 'anna', 'enna', 'essa', 'issa',
+                    'lyn', 'lynn', 'een', 'ene', 'ey', 'leigh', 'lee', 'li', 'ita', 'etta', 'ola', 'ela',
+                    'ora', 'ara', 'era', 'ira', 'ura', 'aya', 'iya', 'ova', 'eva'],
+
+    // Male name endings (heuristic patterns)
+    maleEndings: ['o', 'us', 'er', 'on', 'an', 'en', 'in', 'ton', 'son', 'ard', 'ert', 'ald', 'old',
+                  'ick', 'rik', 'wig', 'ulf', 'olf', 'mund', 'bert', 'fred', 'helm', 'mar', 'mir',
+                  'ko', 'ro', 'io', 'ius', 'os', 'es', 'is', 'as']
+};
+
+/**
+ * Determine the gender of a name
+ * @param {string} name - The name to classify
+ * @returns {string} - 'male', 'female', or 'unisex'
+ */
+function getNameGender(name) {
+    const normalized = name.toLowerCase().trim();
+
+    // Check explicit unisex names first
+    if (GENDER_DATA.unisexNames.has(name) || GENDER_DATA.unisexNames.has(normalized)) {
+        return 'unisex';
+    }
+
+    // Check explicit female names
+    if (GENDER_DATA.femaleNames.has(name) || GENDER_DATA.femaleNames.has(normalized)) {
+        return 'female';
+    }
+
+    // Use ending patterns as heuristics
+    for (const ending of GENDER_DATA.femaleEndings) {
+        if (normalized.endsWith(ending) && normalized.length > ending.length + 1) {
+            // Check it's not a common male name with this ending
+            const commonMaleWithFemaleEnding = ['Joshua', 'Andrea', 'Luca', 'Nikita', 'Sascha', 'Dana'];
+            if (!commonMaleWithFemaleEnding.some(m => m.toLowerCase() === normalized)) {
+                return 'female';
+            }
+        }
+    }
+
+    // Default to male (since most unclassified names in the database are male)
+    return 'male';
+}
+
+// Flatten all names into a single array with origin and gender info
 const ALL_NAMES = [];
+const seenNames = new Set(); // Avoid duplicates
+
 for (const [origin, names] of Object.entries(NAMES_DATABASE)) {
+    // Normalize origin name (remove _extended suffix for display)
+    const displayOrigin = origin.replace(/_extended$/, '');
+
     for (const name of names) {
-        ALL_NAMES.push({ name, origin });
+        // Create a unique key to avoid duplicates
+        const key = name.toLowerCase();
+        if (!seenNames.has(key)) {
+            seenNames.add(key);
+            ALL_NAMES.push({
+                name,
+                origin: displayOrigin,
+                gender: getNameGender(name)
+            });
+        }
     }
 }
 
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { NAMES_DATABASE, ALL_NAMES };
+    module.exports = { NAMES_DATABASE, ALL_NAMES, getNameGender, GENDER_DATA };
 }
