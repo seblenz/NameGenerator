@@ -6,14 +6,15 @@ A modern, minimalist web application for suggesting first names that pair well w
 
 ### Two Modes
 
-1. **Common Names Mode**: Search through a database of 5,000+ international first names from diverse cultures worldwide including:
-   - English, German, Spanish, French, Italian
-   - Chinese, Japanese, Korean transliterations
-   - Arabic, Indian, Persian names
-   - African, Scandinavian, Slavic names
-   - And many more...
+1. **Common Names Mode**: Search through your custom database of first names loaded from a CSV file.
 
 2. **Novel Generation Mode**: Generate unique, pronounceable first names that don't necessarily exist but follow good phonetic patterns and harmonize beautifully with the given last name.
+
+### Filtering
+
+- **Gender Filter**: Filter by Male, Female, Unisex, or All
+- **Origin Filter**: Filter by region/origin (dynamically populated from your CSV data)
+- **Load More**: Browse through results with pagination (10 at a time)
 
 ### Phonetic Analysis
 
@@ -30,6 +31,7 @@ The app analyzes names based on sophisticated linguistic principles:
 
 - Single-page application (HTML/CSS/JavaScript)
 - No external dependencies or build tools required
+- CSV-based names database for easy customization
 - Real-time suggestions as you type
 - Support for German umlauts (ä, ö, ü, ß) and international characters
 - Responsive design for mobile and desktop
@@ -37,21 +39,68 @@ The app analyzes names based on sophisticated linguistic principles:
 
 ## Usage
 
-1. Open `index.html` in any modern web browser
-2. Enter a last name in the input field
-3. Select either "Common Names" or "Generate Novel" mode
-4. View the top 10 name suggestions ranked by phonetic compatibility
-5. Each suggestion includes reasons explaining why it pairs well
+1. Add your names to `data/names.csv` (see format below)
+2. Open `index.html` in any modern web browser (must be served via HTTP/HTTPS for CSV loading)
+3. Enter a last name in the input field
+4. Use gender and origin filters to narrow results
+5. Click "Show 10 more" to load additional suggestions
+
+### Running Locally
+
+Since the app loads a CSV file via `fetch()`, you need to serve it via HTTP. Use any local server:
+
+```bash
+# Python 3
+python -m http.server 8000
+
+# Node.js (npx)
+npx serve .
+
+# PHP
+php -S localhost:8000
+```
+
+Then open `http://localhost:8000` in your browser.
+
+## CSV Format
+
+The names database is stored in `data/names.csv` with the following columns:
+
+| Column | Description | Required |
+|--------|-------------|----------|
+| Name | The first name | Yes |
+| Gender | Gender classification: `male`, `female`, `unisex`, `m`, `f`, `u` | No (defaults to "unknown") |
+| Grouped Region | Origin/region of the name (e.g., "English", "German", "Japanese") | No (defaults to "Unknown") |
+
+### Example CSV
+
+```csv
+Name,Gender,Grouped Region
+James,male,English
+Emma,female,English
+Yuki,unisex,Japanese
+Hans,male,German
+María,female,Spanish
+```
+
+### Notes on CSV Data
+
+- **Duplicate entries are supported**: The same name can appear multiple times with different genders or regions
+- **Gender values are normalized**: `m`, `male`, `boy`, `masculine` all become "male"
+- **Quoted values supported**: Use quotes for values containing commas: `"Name, Jr."`
+- **Empty CSV**: If the CSV is empty (only headers), the app will show a message prompting you to add data
 
 ## Project Structure
 
 ```
 NameGenerator/
 ├── index.html              # Main HTML file
+├── data/
+│   └── names.csv           # Names database (CSV format)
 ├── css/
 │   └── styles.css          # Modern minimalist styles
 ├── js/
-│   ├── names-database.js   # 5,000+ international first names
+│   ├── names-database.js   # CSV loader and parser
 │   ├── phonetic-engine.js  # Phonetic analysis algorithms
 │   ├── name-generator.js   # Novel name generation
 │   └── app.js              # Main application logic

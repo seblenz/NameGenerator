@@ -13,6 +13,7 @@ const App = {
     allResults: [],
     displayedCount: 0,
     resultsPerPage: 10,
+    dataLoaded: false,
 
     // DOM Elements
     elements: {},
@@ -20,10 +21,60 @@ const App = {
     /**
      * Initialize the application
      */
-    init() {
+    async init() {
         this.cacheElements();
+        this.showDataLoading();
+
+        // Wait for CSV data to load
+        try {
+            await initializeNamesDatabase();
+            this.dataLoaded = true;
+            console.log(`Database loaded with ${ALL_NAMES.length} names`);
+
+            // Populate origin filter with available regions
+            this.populateOriginFilter();
+        } catch (error) {
+            console.error('Failed to load names database:', error);
+        }
+
         this.bindEvents();
         this.setMode('database');
+        this.showPlaceholder();
+    },
+
+    /**
+     * Show loading state while data loads
+     */
+    showDataLoading() {
+        if (this.elements.resultsPlaceholder) {
+            this.elements.resultsPlaceholder.innerHTML = `
+                <div class="placeholder-icon">
+                    <div class="loading-spinner"></div>
+                </div>
+                <p>Loading names database...</p>
+            `;
+        }
+    },
+
+    /**
+     * Populate origin filter with regions from CSV data
+     */
+    populateOriginFilter() {
+        const regions = getAvailableRegions();
+        const select = this.elements.originFilter;
+
+        if (!select || regions.length === 0) return;
+
+        // Clear existing options except "All Origins"
+        select.innerHTML = '<option value="all">All Origins</option>';
+
+        // Add each region as an option
+        regions.forEach(region => {
+            const option = document.createElement('option');
+            option.value = region.toLowerCase();
+            option.textContent = region;
+            select.appendChild(option);
+        });
     },
 
     /**
@@ -455,6 +506,31 @@ const App = {
         this.elements.resultsList.classList.add('hidden');
         this.elements.loadMoreWrapper.classList.add('hidden');
         this.elements.resultsCount.textContent = '';
+
+        // Show appropriate message based on data state
+        if (!this.dataLoaded || ALL_NAMES.length === 0) {
+            this.elements.resultsPlaceholder.innerHTML = `
+                <div class="placeholder-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 8v4M12 16h.01"/>
+                    </svg>
+                </div>
+                <p>No names loaded. Please add names to data/names.csv</p>
+            `;
+        } else {
+            this.elements.resultsPlaceholder.innerHTML = `
+                <div class="placeholder-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                        <line x1="9" y1="9" x2="9.01" y2="9"/>
+                        <line x1="15" y1="9" x2="15.01" y2="9"/>
+                    </svg>
+                </div>
+                <p>Enter a last name to discover harmonious first name pairings</p>
+            `;
+        }
     },
 
     /**
